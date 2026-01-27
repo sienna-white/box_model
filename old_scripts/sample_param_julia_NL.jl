@@ -130,6 +130,7 @@ function system!(du, u, p, t)
     half_sat_ku_diatom = 1.9        # 1.9- 2.8 , µmol P / L (Asterionella formosa)
     half_sat_ku_microcystis = 0.3   # µmol P / L   (Microcystis aeruginosa)
     microcystis_v_umax = 1.95       # µmol P / (mol cell C second)     (Microcystis aeruginosa)
+    
     uptake_d = (diatom_v_umax * µmol_2_mgP) *  ((n1 / (n1 + half_sat_ku_diatom)))
     uptake_m = (microcystis_v_umax * µmol_2_mgP) * (n1 / (n1 + half_sat_ku_microcystis)))
 
