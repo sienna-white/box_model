@@ -31,19 +31,21 @@ lm  = 0.004 * hr2s
 
 # half saturation for growth 
 γ_m = 0.18 # half saturation constant for microcystis growth
-γ_d = 1 # half saturation constant for diatom growth
+γ_d = 0.097 # half saturation constant for diatom growth
 
 # maximum uptake rates 
 uptake_d = 4e-12 # nutrient uptake rate for diatoms
 uptake_m = 2.23e-12 # [µmol P / cell s] nutrient uptake rate for microcystis
 
 # half saturation for uptake 
-γ_nm =  1.23 # [µmol P / L] half saturation constant for nutrient uptake microcystis
+γ_nm = 1.23 # [µmol P / L] half saturation constant for nutrient uptake microcystis
 γ_nd = 2.8     # half saturation constant for nutrient uptake diatoms    
 
 # Growth
-α = 0.008 * hr2s
-β = 0.05 * hr2s
+# α = 0.008 * hr2s
+α = 0.27/24  * hr2s # 0.27 per day
+β = 2/24  * hr2s # 2 per day 
+# β = 0.05 * hr2s
 
 # uptake_d = uptake_d * 2.46e-5 * d1 
 # uptake_m = uptake_m * 5.5e-13 * m1
@@ -63,23 +65,21 @@ end
 
 
 mult = 10 
-N = 15
+N = 20
 
 
 
 # p1 = 0.02 # mg P / L # (from data)
 
 # Diffusivity 
-Kappa = logrange(10^-1, 10^-6, N)
+Kappa = logrange(10^-1, 10^-7, N)
 
 # Ratio between depths
-Depth_ratio = LinRange(0.1, 3, N) 
-Total_depth = LinRange(4, 11, N) 
-Drawdown = LinRange(1, 100, N)
+Depth_ratio = LinRange(0.05, 0.95, N) 
+Total_depth = LinRange(4, 15, N) 
 
 matrix_out_m = zeros(N, N, N)
 matrix_out_d = zeros(N, N, N)
-
 
 function system!(du, u, p, t)
 
@@ -90,7 +90,7 @@ function system!(du, u, p, t)
     h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd = p 
 
     # bottom nutrients 
-    n2 = 0.129
+    n2 = 5 # 0.129
 
     # println(h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd)
     
@@ -123,19 +123,20 @@ println("Running simulation for T = $T seconds...")
 
 
 for idx in IterTools.product(1:N, 1:N, 1:N)
-    println("1")
-
     i, j, k = idx
 
     κ = Kappa[i]
     ratio = Depth_ratio[j]
     depth = Total_depth[k]
-    h2 = depth/(1 + ratio)
-    h1 = ratio * h2 
+    # h2 = depth/(1 + ratio)
+    h1 = ratio * depth
+    h2 = depth - h1
+
+     # Pack parameters 
 
     p = (h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd)
 
-    init_n = 0.129 # µmol P / L
+    init_n = 5 # µmol P / L
     init  = 8e5  # 40,000 to 120,000 cells per liter
     init = [init, init, init, init, init_n]
     # init = [h1, h2, h1, h2, h1*init_n, h2*init_n]
@@ -164,11 +165,12 @@ for idx in IterTools.product(1:N, 1:N, 1:N)
 end
 println("Finished running simulation for T = $T seconds")
 
+@info "Saving results to NetCDF file..."
 fout = "population_dataset_time_2s.nc"
 ds = NCDataset(fout,"c")
 
 defDim(ds, "ratio", N)
-defDim(ds, "κ", N) 
+defDim(ds, "kappa", N) 
 defDim(ds, "depth", N)
 defDim(ds, "t", NT)
 # defDim(ds, "drawdown", N)
@@ -176,7 +178,7 @@ defDim(ds, "t", NT)
 v = defVar(ds, "ratio", Float32, ("ratio",), attrib = OrderedDict("units" => "[-]"))
 v[:] = Depth_ratio #Depth_ratio 
 
-v = defVar(ds, "κ", Float32, ("κ",), attrib = OrderedDict("units" => "m^2/s"))
+v = defVar(ds, "kappa", Float32, ("kappa",), attrib = OrderedDict("units" => "m^2/s"))
 v[:] = Kappa
 
 v = defVar(ds, "depth", Float32, ("depth",), attrib = OrderedDict("units" => "m"))
@@ -186,22 +188,26 @@ v = defVar(ds, "t", Int, ("t",), attrib = OrderedDict("units" => "s"))
 v[:] = collect(range(0, T, length=NT))
 print(range(0, T, length=NT))
 
-v = defVar(ds, "d1", Float64,("κ","ratio", "depth", "t"), attrib = OrderedDict(
+v = defVar(ds, "d1", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "surface diatoms"))
 v[:,:,:,:] = matrix_out_d1 ; 
 
-v = defVar(ds, "m1", Float64,("κ","ratio", "depth", "t"), attrib = OrderedDict(
+v = defVar(ds, "d2", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
+"units" =>  "biomass", "long_name" => "bottom diatoms"))
+v[:,:,:,:] = matrix_out_d2 ; 
+
+v = defVar(ds, "m1", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "biomass_of_microcystis"))
 v[:,:,:,:] = matrix_out_m1 ; 
 
-v = defVar(ds, "m2", Float64,("κ","ratio", "depth", "t"), attrib = OrderedDict(
+v = defVar(ds, "m2", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "biomass_of_microcystis"))
 v[:,:,:,:] = matrix_out_m2 ; 
 
-v = defVar(ds, "n1", Float64,("κ","ratio", "depth", "t"), attrib = OrderedDict(
+v = defVar(ds, "n1", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "nutrient", "long_name" => "nutrient"))
 v[:,:,:,:] = matrix_out_n1 ; 
 
 
-print("Saved $fout \n")
+println("Saved $fout \n")
 close(ds)
