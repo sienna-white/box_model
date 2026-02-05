@@ -25,8 +25,8 @@ hr2s = 1/3600
 wm = 0.5 * hr2s
 wd = 0.05 * hr2s
 
-# Respiration 
-ld = 0.006 * hr2s
+# Respiration  
+ld = 0.008 * hr2s # 0.006
 lm  = 0.004 * hr2s
 
 # half saturation for growth 
@@ -38,13 +38,13 @@ uptake_d = 4e-12 # nutrient uptake rate for diatoms
 uptake_m = 2.23e-12 # [µmol P / cell s] nutrient uptake rate for microcystis
 
 # half saturation for uptake 
-γ_nm = 1.23 # [µmol P / L] half saturation constant for nutrient uptake microcystis
-γ_nd = 2.8     # half saturation constant for nutrient uptake diatoms    
+γ_nm = 1.23    # [µmol P / L] half saturation constant for nutrient uptake microcystis
+γ_nd = 2.8     # [µmol P / L] half saturation constant for nutrient uptake diatoms    
 
 # Growth
 # α = 0.008 * hr2s
-α = 0.27/24  * hr2s # 0.27 per day
-β = 2/24  * hr2s # 2 per day 
+α = 0.27/24  * hr2s # 0.27 per day 0.27/24
+β = 2/24  * hr2s    # 2 per day 
 # β = 0.05 * hr2s
 
 # uptake_d = uptake_d * 2.46e-5 * d1 
@@ -90,7 +90,7 @@ function system!(du, u, p, t)
     h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd = p 
 
     # bottom nutrients 
-    n2 = 5 # 0.129
+    n2 = 3 # 0.129
 
     # println(h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd)
     
@@ -136,8 +136,8 @@ for idx in IterTools.product(1:N, 1:N, 1:N)
 
     p = (h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd)
 
-    init_n = 5 # µmol P / L
-    init  = 8e5  # 40,000 to 120,000 cells per liter
+    init_n = 2 # µmol P / L
+    init  = 5e6  # 40,000 to 120,000 cells per liter
     init = [init, init, init, init, init_n]
     # init = [h1, h2, h1, h2, h1*init_n, h2*init_n]
 
@@ -166,7 +166,7 @@ end
 println("Finished running simulation for T = $T seconds")
 
 @info "Saving results to NetCDF file..."
-fout = "population_dataset_time_2s.nc"
+fout = "population_dataset_time_2s_3umol.nc"
 ds = NCDataset(fout,"c")
 
 defDim(ds, "ratio", N)
