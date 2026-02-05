@@ -1,41 +1,42 @@
 import numpy as np 
 
-# 
+
+hr2s = 1/3600
+day2s = 1/(3600*24)
+
+
 mol_p = 30.97 # g/mol molar mass for p 
 umol_p = mol_p * 1e-6 # g/umol molar mass for p
 
-hr2s = 1/3600
-n2 = 0.05    
 
 # Settling / swimming velocities
 wm = 0.5 * hr2s
 wd = 0.05 * hr2s
 
-# Respiration 
-Ld = 0.006 * hr2s
+# Respiration  
+Ld  = 0.008 * hr2s # 0.006
 Lm  = 0.004 * hr2s
-
-# Growth rate 
-beta = 1    # maximum diatom growth rate
-alpha = 1   # maximum microcystis growth rate
 
 # half saturation for growth 
 gamma_m = 0.18 # half saturation constant for microcystis growth
-gamma_d = 0.097  # half saturation constant for diatom growth
+gamma_d = 0.097 # half saturation constant for diatom growth
 
 # maximum uptake rates 
-uptake_d = 4e-12 # nutrient uptake rate for diatoms
+uptake_d = 4.16e-12 # nutrient uptake rate for diatoms
 uptake_m = 2.23e-12 # [µmol P / cell s] nutrient uptake rate for microcystis
 
 # half saturation for uptake 
-gamma_nm =  1.23 # [µmol P / L] half saturation constant for nutrient uptake microcystis
-gamma_nd = 2.8     # half saturation constant for nutrient uptake diatoms    
+gamma_nm = 1.23    # [µmol P / L] half saturation constant for nutrient uptake microcystis
+gamma_nd = 2.8     # [µmol P / L] half saturation constant for nutrient uptake diatoms    
+        # ^ (0.7 - 2.8)
 
 # Growth
-alpha = 0.27/24  * hr2s
-beta = 2/24  * hr2s
+# alpha = 0.008 * hr2s
+alpha = 1 * day2s # 0.27 per day 0.27/24
+beta = 2 * day2s    # 2 per day 
 
 
+n2 = 4
 
 parameters = {}
 parameters["hr2s"] = hr2s
@@ -135,7 +136,7 @@ def jacobian_1s(kappa, h1, h2, m1, m2, n1):
     eigenvectors = eigenvectors[:,idx]
     return (eigenvalues, eigenvectors)  
 
-def field_at_point_2s(R, H, kappa, m1, m2, d1, d2, n1):
+def field_at_point_2s(R, H, kappa, m1, m2, d1, d2, n1, n2):
     h1 = R*H 
     h2 = H - h1     
     #       advection        diffusion       loss      growth
@@ -151,3 +152,7 @@ def steady_state_2s(R, H, kappa, d2, m2, n1):
     d1_ss = d2*kappa*(gamma_d + n1)/(H*Ld*R*gamma_d + H*Ld*R*n1 - H*R*beta*n1 + gamma_d*kappa + gamma_d*wd + kappa*n1 + n1*wd)
     m1_ss = m2*(gamma_m*kappa + gamma_m*wm + kappa*n1 + n1*wm)/(H*Lm*R*gamma_m + H*Lm*R*n1 - H*R*alpha*n1 + gamma_m*kappa + kappa*n1)
     return d1_ss, m1_ss
+
+#         (d2*gamma_d*kappa + d2*kappa*n1)/(H*Ld*R*gamma_d + H*Ld*R*n1 - H*R*growth_d*n1 + gamma_d*kappa + gamma_d*wd + kappa*n1 + n1*wd)
+#     m1: (gamma_m*kappa*m2 + gamma_m*m2*wm + kappa*m2*n1 + m2*n1*wm)/(H*Lm*R*gamma_m + H*Lm*R*n1 - H*R*growth_m*n1 + gamma_m*kappa + kappa*n1)}]
+# Solution 1:
