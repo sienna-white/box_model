@@ -82,9 +82,10 @@ def jacobian_2s(kappa, h1, h2, m1, m2, d1, d2, n1):
     df4_dd2 = -Ld -  kappa/h2
 
     # Row 5 
-    df5_dm1 = - uptake_m * (n1 / (n1 + gamma_nm))
-    df5_dd1 = - uptake_d * (n1 / (n1 + gamma_nd))
-    df5_dn1 = -kappa/h1 - uptake_m*m1 * gamma_nm/(gamma_nm + n1)**2 - uptake_d * d1 * gamma_nd/(gamma_nd + n1)**2 
+    df5_dm1 = - uptake_m  #* (n1 / (n1 + gamma_nm))
+    df5_dd1 = - uptake_d #* (n1 / (n1 + gamma_nd))
+    # df5_dn1 = -kappa/h1 - uptake_m*m1 * gamma_nm/(gamma_nm + n1)**2 - uptake_d * d1 * gamma_nd/(gamma_nd + n1)**2 
+    df5_dn1 = -kappa/h1  #- uptake_m*m1 * gamma_nm/(gamma_nm + n1)**2 - uptake_d * d1 * gamma_nd/(gamma_nd + n1)**2 
 
     # Jacobian matrix
     j = np.array([[df1_dm1,   df1_dm2,       0,          0,     df1_dn1 ],

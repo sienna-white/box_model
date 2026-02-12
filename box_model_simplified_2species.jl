@@ -11,7 +11,7 @@ using Statistics
 using DifferentialEquations
 using IterTools
 using Base.Threads
-using Sundials 
+
 Threads.nthreads()
 
 hr2s = 1/3600
@@ -74,7 +74,7 @@ end
 
 
 mult = 10 
-N = 9
+N = 20
 
 
 
@@ -82,16 +82,13 @@ N = 9
 
 # Diffusivity 
 Kappa = logrange(10^-1, 10^-8, N)
+
 # Ratio between depths
 Depth_ratio = LinRange(0.05, 0.95, N) 
-# Depth of water column
 Total_depth = LinRange(4, 15, N) 
-# Initial population of cells
-Starting_population = LinRange(1, 10, N) # cells / L
 
-# Nutrient concentration in bottom layer 
-Available_nutrients = LinRange(5, 60, N) # µmol P / L
-
+matrix_out_m = zeros(N, N, N)
+matrix_out_d = zeros(N, N, N)
 
 function system!(du, u, p, t)
 
@@ -99,85 +96,62 @@ function system!(du, u, p, t)
     m1, m2, d1, d2, n1 = u
 
     # Unpack parameters
-    h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, n2 = p 
+    h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, m2, d2, n2 = p 
 
     # bottom nutrients 
     # n2 = 20 # 0.129
 
     # m1     advection    diffusion         loss        growth
     du[1] =  (wm/h1)*m2 + κ/h1*(m2 - m1) - lm*m1 + (α * m1*(n1/(γ_m + n1))) 
-    # m2     advection    diffusion        loss        
-    du[2] = -(wm/h2)*m2 + κ/h2*(m1 - m2) - lm*m2
+
     # d1     advection    diffusion        loss         growth
     du[3] = -(wd/h1)*d1 + κ/h1*(d2 - d1) - ld*d1 + β * d1*(n1/(γ_d + n1))
 
-    # d2     advection    diffusion        loss
-    du[4] =  (wd/h2)*d1 + κ/h2*(d1 - d2) - ld*d2
     # n1     diffusion         # m1 uptake                         #d1 uptake  
-    du[5] =  κ/h1 *(n2 - n1) - m1*uptake_m*(n1/(γ_m + n1)) - d1*uptake_d*(n1/(γ_d + n1))   
+    du[5] =  κ/h1 *(n2 - n1) - m1*uptake_m - d1*uptake_d   
     # du[5] =  κ/h1 *(n2 - n1) - m1*uptake_m*((n1*h1)/((n1*h1) + γ_nm)) - d1*uptake_d*((n1*h1)/((n1*h1) + γ_nd))
-    # println("t = $t, m1 = $m1, m2 = $m2, d1 = $d1, d2 = $d2, n1 = $n1")
 end
 
-T = 3600*12 #*10
+T = 3600*4 #*10
 tspan = (0, T) 
 
 NT = 500 
-matrix_out_m1 = zeros(N, N, N, N, N, NT)
-matrix_out_m2 = zeros(N, N, N, N, N, NT)
-matrix_out_d1 = zeros(N, N, N, N, N, NT)
-matrix_out_d2 = zeros(N, N, N, N, N, NT)
-matrix_out_n1 = zeros(N, N, N, N, N, NT)
+matrix_out_m1 = zeros(N, N, N, NT)
+matrix_out_m2 = zeros(N, N, N, NT)
+matrix_out_d1 = zeros(N, N, N, NT)
+matrix_out_d2 = zeros(N, N, N, NT)
+matrix_out_n1 = zeros(N, N, N, NT)
 
 
 # Let's loop over κ, R, and total depth 
 # index_tuples = IterTools.product(1:N, 1:N, 1:N, 1:N)
 println("Running simulation for T = $T seconds...")
 
-for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
-    a, b, c, d, e = idx # Kappa, Ratio, Depth, Initial population, Nutrient concentration
+for idx in IterTools.product(1:N, 1:N, 1:N)
+    i, j, k = idx
 
-    κ = Kappa[a]
-    ratio = Depth_ratio[b]
-    depth = Total_depth[c]
-    init = Starting_population[d]
-    n2 = Available_nutrients[e]
-
-
+    κ = Kappa[i]
+    ratio = Depth_ratio[j]
+    depth = Total_depth[k]
     # h2 = depth/(1 + ratio)
     h1 = ratio * depth
     h2 = depth - h1
 
-    init  = init * 1e6  # 40,000 to 120,000 cells per liter
-
-    init_n = n2 #30 # µmol P / L
-    # chla2cell_mc =  1e-6/0.36  # ug chl-a/ml --> pg chl-a/ml --> 0.36  pg chl-a/cell Microcystis
-    # chla2cell_diatom = 1e-6/4 # ug chl-a/ml --> pg chl-a/ml --> 4 pg chl-a/cell Diatom
-    # cell2chla_mc = 1/chla2cell_mc
-    # cell2chla_diatom = 1/chla2cell_diatom
-    # @info "Starting with $(init*0.36*1e-6) ug/L chl-a for microcystis and $(init*4*1e-6) ug/L chl-a for diatoms"
+    init_n = 20 # µmol P / L
+    init  = 4e6  # 40,000 to 120,000 cells per liter
 
      # Pack parameters 
-    p = (h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, init_n)
-
-    # Exit if any variable hits < 0 
-    condition(u, t, integrator) = minimum(u)  # triggers when crosses 0
-    function affect!(integrator)
-        terminate!(integrator)
-    end
-
-    cb = ContinuousCallback(condition, affect!)
-
+    p = (h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, init, init, init_n)
 
     init = [init, init, init, init, init_n]
 
     prob = ODEProblem(system!, init, tspan, p)
 
-    sol = solve(prob, saveat=range(0, T, length=NT), abstol=1e-9, reltol=1e-9, CVODE_BDF(), callback=cb)
+    sol = solve(prob, saveat=range(0, T, length=NT), abstol=1e-8, reltol=1e-8, maxiters=1e6,  Rodas5())
     m1, m2, d1, d2, n1 = sol.u[end]
 
-    # matrix_out_m[i, j, k] = m1 + m2 
-    # matrix_out_d[i, j, k] = d1 + d2 
+    matrix_out_m[i, j, k] = m1 + m2 
+    matrix_out_d[i, j, k] = d1 + d2 
 
     m1 = [u[1] for u in sol.u]
     m2 = [u[2] for u in sol.u]
@@ -185,29 +159,21 @@ for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     d2 = [u[4] for u in sol.u]
     n1 = [u[5] for u in sol.u]
 
-    lvar = length(m1) 
-    if lvar <= 500
-        matrix_out_m1[a, b, c, d, e, 1:lvar] = m1
-        matrix_out_m2[a, b, c, d, e, 1:lvar] = m2 
-        matrix_out_d1[a, b, c, d, e, 1:lvar] = d1
-        matrix_out_d2[a, b, c, d, e, 1:lvar] = d2 
-        matrix_out_n1[a, b, c, d, e, 1:lvar] = n1 
-    else 
-        println("Length of solution: $lvar")
-    end 
+    matrix_out_m1[i, j, k, :] = m1
+    matrix_out_m2[i, j, k, :] = m2 
+    matrix_out_d1[i, j, k, :] = d1
+    matrix_out_d2[i, j, k, :] = d2 
+    matrix_out_n1[i, j, k, :] = n1 
 end
 println("Finished running simulation for T = $T seconds")
 
 @info "Saving results to NetCDF file..."
-fout = "population_dataset_NO3_30umol.nc"
+fout = "population_dataset_NO3_20umol.nc"
 ds = NCDataset(fout,"c")
 
 defDim(ds, "ratio", N)
 defDim(ds, "kappa", N) 
 defDim(ds, "depth", N)
-defDim(ds, "n2", N)
-defDim(ds, "init", N)
-
 defDim(ds, "t", NT)
 # defDim(ds, "drawdown", N)
 
@@ -220,34 +186,29 @@ v[:] = Kappa
 v = defVar(ds, "depth", Float32, ("depth",), attrib = OrderedDict("units" => "m"))
 v[:] = Total_depth
 
-v = defVar(ds, "n2", Float32, ("n2",), attrib = OrderedDict("units" => "µmol N / L"))
-v[:] = Available_nutrients
-
-v = defVar(ds, "init", Float32, ("init",), attrib = OrderedDict("units" => "10e6 cells / L"))
-v[:] = Starting_population
-
 v = defVar(ds, "t", Int, ("t",), attrib = OrderedDict("units" => "s"))
 v[:] = collect(range(0, T, length=NT))
+print(range(0, T, length=NT))
 
-v = defVar(ds, "d1", Float64,("kappa","ratio", "depth", "init", "n2", "t"), attrib = OrderedDict(
+v = defVar(ds, "d1", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "surface diatoms"))
-v[:,:,:,:,:,:] = matrix_out_d1 ; 
+v[:,:,:,:] = matrix_out_d1 ; 
 
-v = defVar(ds, "d2", Float64,("kappa","ratio", "depth", "init", "n2",  "t"), attrib = OrderedDict(
+v = defVar(ds, "d2", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "bottom diatoms"))
-v[:,:,:,:,:,:] = matrix_out_d2 ; 
+v[:,:,:,:] = matrix_out_d2 ; 
 
-v = defVar(ds, "m1", Float64,("kappa","ratio", "depth", "init", "n2",  "t"), attrib = OrderedDict(
+v = defVar(ds, "m1", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "biomass_of_microcystis"))
-v[:,:,:,:,:,:] = matrix_out_m1 ; 
+v[:,:,:,:] = matrix_out_m1 ; 
 
-v = defVar(ds, "m2", Float64,("kappa","ratio", "depth", "init", "n2",  "t"), attrib = OrderedDict(
+v = defVar(ds, "m2", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "biomass", "long_name" => "biomass_of_microcystis"))
-v[:,:,:,:,:,:] = matrix_out_m2 ; 
+v[:,:,:,:] = matrix_out_m2 ; 
 
-v = defVar(ds, "n1", Float64,("kappa","ratio", "depth", "init", "n2",  "t"), attrib = OrderedDict(
+v = defVar(ds, "n1", Float64,("kappa","ratio", "depth", "t"), attrib = OrderedDict(
 "units" =>  "nutrient", "long_name" => "nutrient"))
-v[:,:,:,:,:,:] = matrix_out_n1 ; 
+v[:,:,:,:] = matrix_out_n1 ; 
 
 
 println("Saved $fout \n")
