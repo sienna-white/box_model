@@ -4,7 +4,6 @@ using DataStructures: OrderedDict
 using NCDatasets
 using DataFrames
 using CSV, DataFrames
-# module load  julia/1.11.7 
 using Printf
 using LinearAlgebra
 using Statistics 
@@ -12,7 +11,8 @@ using DifferentialEquations
 using IterTools
 using Base.Threads
 using Sundials 
-Threads.nthreads()
+# module load  julia/1.11.7 
+
 
 hr2s = 1/3600
 day2s = 1/(3600*24)
@@ -21,7 +21,7 @@ day2s = 1/(3600*24)
 # wm = 1e-4 # m/s
 # growth_m = 1.08e-5 
 # growth_d = 3.6e-5 
-
+println("Using $(Threads.nthreads()) threads.")
 # Settling / swimming velocities
 wm = 0.5 * hr2s
 wd = 0.05 * hr2s
@@ -74,7 +74,7 @@ end
 
 
 mult = 10 
-N = 9
+N = 11
 
 
 
@@ -134,7 +134,16 @@ matrix_out_n1 = zeros(N, N, N, N, N, NT)
 # index_tuples = IterTools.product(1:N, 1:N, 1:N, 1:N)
 println("Running simulation for T = $T seconds...")
 
-for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
+t1 = Dates.now()
+println("0Time = ", t1)
+
+    # chla2cell_mc =  1e-6/0.36  # ug chl-a/ml --> pg chl-a/ml --> 0.36  pg chl-a/cell Microcystis
+    # chla2cell_diatom = 1e-6/4 # ug chl-a/ml --> pg chl-a/ml --> 4 pg chl-a/cell Diatom
+    # cell2chla_mc = 1/chla2cell_mc
+    # cell2chla_diatom = 1/chla2cell_diatom
+    # @info "Starting with $(init*0.36*1e-6) ug/L chl-a for microcystis and $(init*4*1e-6) ug/L chl-a for diatoms"
+
+@threads for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     a, b, c, d, e = idx # Kappa, Ratio, Depth, Initial population, Nutrient concentration
 
     κ = Kappa[a]
@@ -151,11 +160,6 @@ for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     init  = init * 1e6  # 40,000 to 120,000 cells per liter
 
     init_n = n2 #30 # µmol P / L
-    # chla2cell_mc =  1e-6/0.36  # ug chl-a/ml --> pg chl-a/ml --> 0.36  pg chl-a/cell Microcystis
-    # chla2cell_diatom = 1e-6/4 # ug chl-a/ml --> pg chl-a/ml --> 4 pg chl-a/cell Diatom
-    # cell2chla_mc = 1/chla2cell_mc
-    # cell2chla_diatom = 1/chla2cell_diatom
-    # @info "Starting with $(init*0.36*1e-6) ug/L chl-a for microcystis and $(init*4*1e-6) ug/L chl-a for diatoms"
 
      # Pack parameters 
     p = (h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, init_n)
@@ -196,8 +200,10 @@ for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
         println("Length of solution: $lvar")
     end 
 end
+
 println("Finished running simulation for T = $T seconds")
 
+println("Time2 = $(Dates.now() - t1)")
 @info "Saving results to NetCDF file..."
 fout = "population_dataset_NO3_30umol.nc"
 ds = NCDataset(fout,"c")
