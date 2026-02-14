@@ -11,6 +11,7 @@ using DifferentialEquations
 using IterTools
 using Base.Threads
 using Sundials 
+
 # module load  julia/1.11.7 
 
 
@@ -73,8 +74,8 @@ function create_range_over(value::Float64, mult::Int, N::Int)
 end
 
 
-mult = 10 
-N = 11
+mult = 13 
+N = 10
 
 
 
@@ -134,8 +135,7 @@ matrix_out_n1 = zeros(N, N, N, N, N, NT)
 # index_tuples = IterTools.product(1:N, 1:N, 1:N, 1:N)
 println("Running simulation for T = $T seconds...")
 
-t1 = Dates.now()
-println("0Time = ", t1)
+
 
     # chla2cell_mc =  1e-6/0.36  # ug chl-a/ml --> pg chl-a/ml --> 0.36  pg chl-a/cell Microcystis
     # chla2cell_diatom = 1e-6/4 # ug chl-a/ml --> pg chl-a/ml --> 4 pg chl-a/cell Diatom
@@ -143,7 +143,7 @@ println("0Time = ", t1)
     # cell2chla_diatom = 1/chla2cell_diatom
     # @info "Starting with $(init*0.36*1e-6) ug/L chl-a for microcystis and $(init*4*1e-6) ug/L chl-a for diatoms"
 
-@threads for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
+for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     a, b, c, d, e = idx # Kappa, Ratio, Depth, Initial population, Nutrient concentration
 
     κ = Kappa[a]
@@ -203,9 +203,8 @@ end
 
 println("Finished running simulation for T = $T seconds")
 
-println("Time2 = $(Dates.now() - t1)")
 @info "Saving results to NetCDF file..."
-fout = "population_dataset_NO3_30umol.nc"
+fout = "population_dataset_NO3_13.nc"
 ds = NCDataset(fout,"c")
 
 defDim(ds, "ratio", N)
