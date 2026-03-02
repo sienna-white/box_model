@@ -146,12 +146,12 @@ println("Running simulation for T = $T seconds...")
 for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     a, b, c, d, e = idx # Kappa, Ratio, Depth, Initial population, Nutrient concentration
 
-    κ = Kappa[a]
+    
     ratio = Depth_ratio[b]
     depth = Total_depth[c]
     init = Starting_population[d]
     n2 = Available_nutrients[e]
-
+    κ = Kappa[a]/depth
 
     # h2 = depth/(1 + ratio)
     h1 = ratio * depth
@@ -204,7 +204,7 @@ end
 println("Finished running simulation for T = $T seconds")
 
 @info "Saving results to NetCDF file..."
-fout = "population_dataset_NO3_13.nc"
+fout = "population_dataset_NO3_Kappa.nc"
 ds = NCDataset(fout,"c")
 
 defDim(ds, "ratio", N)
