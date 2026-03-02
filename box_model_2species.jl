@@ -82,16 +82,16 @@ N = 10
 # p1 = 0.02 # mg P / L # (from data)
 
 # Diffusivity 
-Kappa = logrange(10^-1, 10^-8, N)
+Kappa = logrange(10^0, 10^-8, N)
 # Ratio between depths
-Depth_ratio = LinRange(0.05, 0.95, N) 
+Depth_ratio = LinRange(0.1, 0.9, N) 
 # Depth of water column
 Total_depth = LinRange(4, 15, N) 
 # Initial population of cells
-Starting_population = LinRange(1, 10, N) # cells / L
+Starting_population = LinRange(1, 13, N) # cells / L
 
 # Nutrient concentration in bottom layer 
-Available_nutrients = LinRange(5, 60, N) # µmol P / L
+Available_nutrients = LinRange(2, 60, N) # µmol P / L
 
 
 function system!(du, u, p, t)
