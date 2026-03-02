@@ -123,7 +123,7 @@ end
 T = 3600*12 #*10
 tspan = (0, T) 
 
-NT = 500 
+NT = 50 
 matrix_out_m1 = zeros(N, N, N, N, N, NT)
 matrix_out_m2 = zeros(N, N, N, N, N, NT)
 matrix_out_d1 = zeros(N, N, N, N, N, NT)
