@@ -69,13 +69,12 @@ uptake_m = 2.23e-12 * 16 # [µmol P / cell s] nutrient uptake rate for microcyst
 # uptake_m = uptake_m * 5.5e-13 * m1
 
 
-function create_range_over(value::Float64, mult::Int, N::Int)
-    return LinRange(value/mult, value*mult, N)
-end
+# function create_range_over(value::Float64, mult::Int, N::Int)
+#     return LinRange(value/mult, value*mult, N)
+# end
 
 
-mult = 13 
-N = 10
+N = 8
 
 
 
@@ -86,12 +85,12 @@ Kappa = logrange(10^0, 10^-8, N)
 # Ratio between depths
 Depth_ratio = LinRange(0.1, 0.9, N) 
 # Depth of water column
-Total_depth = LinRange(4, 15, N) 
+Total_depth = LinRange(2, 25, N) 
 # Initial population of cells
-Starting_population = LinRange(1, 13, N) # cells / L
+Starting_population = LinRange(1, 15, N) # cells / L
 
 # Nutrient concentration in bottom layer 
-Available_nutrients = LinRange(2, 60, N) # µmol P / L
+Available_nutrients = LinRange(1, 60, N) # µmol P / L
 
 
 function system!(du, u, p, t)
@@ -100,27 +99,27 @@ function system!(du, u, p, t)
     m1, m2, d1, d2, n1 = u
 
     # Unpack parameters
-    h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, n2 = p 
+    H, h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, n2 = p 
 
     # bottom nutrients 
     # n2 = 20 # 0.129
 
     # m1     advection    diffusion         loss        growth
-    du[1] =  (wm/h1)*m2 + κ/h1*(m2 - m1) - lm*m1 + (α * m1*(n1/(γ_m + n1))) 
+    du[1] =  (wm/h1)*m2 + κ/(h1*H)*(m2 - m1) - lm*m1 + (α * m1*(n1/(γ_m + n1))) 
     # m2     advection    diffusion        loss        
-    du[2] = -(wm/h2)*m2 + κ/h2*(m1 - m2) - lm*m2
+    du[2] = -(wm/h2)*m2 + κ/(h2*H)*(m1 - m2) - lm*m2
     # d1     advection    diffusion        loss         growth
-    du[3] = -(wd/h1)*d1 + κ/h1*(d2 - d1) - ld*d1 + β * d1*(n1/(γ_d + n1))
+    du[3] = -(wd/h1)*d1 + κ/(h1*H)*(d2 - d1) - ld*d1 + β * d1*(n1/(γ_d + n1))
 
     # d2     advection    diffusion        loss
-    du[4] =  (wd/h2)*d1 + κ/h2*(d1 - d2) - ld*d2
+    du[4] =  (wd/h2)*d1 + κ/(h2*H)*(d1 - d2) - ld*d2
     # n1     diffusion         # m1 uptake                         #d1 uptake  
-    du[5] =  κ/h1 *(n2 - n1) - m1*uptake_m*(n1/(γ_m + n1)) - d1*uptake_d*(n1/(γ_d + n1))   
+    du[5] =  κ/(h1*H) *(n2 - n1) - m1*uptake_m*(n1/(γ_m + n1)) - d1*uptake_d*(n1/(γ_d + n1))   
     # du[5] =  κ/h1 *(n2 - n1) - m1*uptake_m*((n1*h1)/((n1*h1) + γ_nm)) - d1*uptake_d*((n1*h1)/((n1*h1) + γ_nd))
     # println("t = $t, m1 = $m1, m2 = $m2, d1 = $d1, d2 = $d2, n1 = $n1")
 end
 
-T = 3600*12 #*10
+T = 3600*14 #*10
 tspan = (0, T) 
 
 NT = 50 
@@ -146,12 +145,12 @@ println("Running simulation for T = $T seconds...")
 for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     a, b, c, d, e = idx # Kappa, Ratio, Depth, Initial population, Nutrient concentration
 
-    
+    κ = Kappa[a] 
     ratio = Depth_ratio[b]
     depth = Total_depth[c]
     init = Starting_population[d]
     n2 = Available_nutrients[e]
-    κ = Kappa[a]/depth
+    
 
     # h2 = depth/(1 + ratio)
     h1 = ratio * depth
@@ -162,22 +161,22 @@ for idx in IterTools.product(1:N, 1:N, 1:N, 1:N, 1:N)
     init_n = n2 #30 # µmol P / L
 
      # Pack parameters 
-    p = (h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, init_n)
+    p = (depth, h1, h2, κ, wm, wd, lm, ld, α, β, γ_m, γ_d, uptake_m, uptake_d, γ_nm, γ_nd, init_n)
 
     # Exit if any variable hits < 0 
-    condition(u, t, integrator) = minimum(u)  # triggers when crosses 0
-    function affect!(integrator)
-        terminate!(integrator)
-    end
+    # condition(u, t, integrator) = minimum(u)  # triggers when crosses 0
+    # function affect!(integrator)
+    #     terminate!(integrator)
+    # end
 
-    cb = ContinuousCallback(condition, affect!)
+    # cb = ContinuousCallback(condition, affect!)
 
 
     init = [init, init, init, init, init_n]
 
     prob = ODEProblem(system!, init, tspan, p)
 
-    sol = solve(prob, saveat=range(0, T, length=NT), abstol=1e-9, reltol=1e-9, CVODE_BDF(), callback=cb)
+    sol = solve(prob, saveat=range(0, T, length=NT), abstol=1e-10, reltol=1e-10, CVODE_BDF(), dt=1e-3, adaptive=false) #, callback=cb)
     m1, m2, d1, d2, n1 = sol.u[end]
 
     # matrix_out_m[i, j, k] = m1 + m2 
@@ -204,7 +203,7 @@ end
 println("Finished running simulation for T = $T seconds")
 
 @info "Saving results to NetCDF file..."
-fout = "population_dataset_NO3_Kappa.nc"
+fout = "population_dataset_NO3_Kappa_log.nc"
 ds = NCDataset(fout,"c")
 
 defDim(ds, "ratio", N)

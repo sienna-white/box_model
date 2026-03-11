@@ -18,16 +18,16 @@ Ld  = 0.008 * hr2s # 0.006
 Lm  = 0.004 * hr2s
 
 # half saturation for growth 
-gamma_m = 0.18 # half saturation constant for microcystis growth
-gamma_d = 0.097 # half saturation constant for diatom growth
+gamma_m = 0.6 #0.18 # half saturation constant for microcystis growth
+gamma_d = 1.8 #0.097 # half saturation constant for diatom growth
 
 # maximum uptake rates 
 uptake_d =  4.16e-12 * 17 # nutrient uptake rate for diatoms
 uptake_m = 2.23e-12 * 16 # [µmol P / cell s] nutrient uptake rate for microcystis
 
-# half saturation for uptake 
-gamma_nm = 1.23    # [µmol P / L] half saturation constant for nutrient uptake microcystis
-gamma_nd = 2.8     # [µmol P / L] half saturation constant for nutrient uptake diatoms    
+# # half saturation for uptake 
+# gamma_nm = 1.23    # [µmol P / L] half saturation constant for nutrient uptake microcystis
+# gamma_nd = 2.8     # [µmol P / L] half saturation constant for nutrient uptake diatoms    
         # ^ (0.7 - 2.8)
 
 # Growth
@@ -141,11 +141,11 @@ def field_at_point_2s(R, H, kappa, m1, m2, d1, d2, n1, n2):
     h1 = R*H 
     h2 = H - h1     
     #       advection        diffusion       loss      growth
-    f1 =  (wm/h1)*m2  + kappa/h1 * (m2 - m1) - Lm*m1 + alpha*m1*(n1/(gamma_m + n1))   # surface Microcystis
-    f2 = (-wm/h2)*m2  + kappa/h2 * (m1 - m2) - Lm*m2                                  # bottom Microcystis
-    f3 = -wd/h1*d1  + kappa/h1 * (d2 - d1) - Ld*d1 + beta*d1*(n1/(gamma_d + n1))      # surface diatoms
-    f4 = wd/h2*d1   + kappa/h2 * (d1 - d2) - Ld*d2                                    # bottom diatoms 
-    f5 = kappa/h1 * (n2 - n1) - uptake_m*m1*(n1/(n1+gamma_m)) - uptake_d*d1*(n1/(n1+gamma_d))     # surface nutrients 
+    f1 =    (wm/h1)*m2   + kappa/(H*h1) * (m2 - m1) - Lm*m1 + alpha*m1*(n1/(gamma_m + n1))   # surface Microcystis
+    f2 =    (-wm/h2)*m2  + kappa/(H*h2) * (m1 - m2) - Lm*m2                                  # bottom Microcystis
+    f3 =    -wd/h1*d1    + kappa/(H*h1) * (d2 - d1) - Ld*d1 + beta*d1*(n1/(gamma_d + n1))      # surface diatoms
+    f4 =    wd/h2*d1     + kappa/(H*h2) * (d1 - d2) - Ld*d2                                    # bottom diatoms 
+    f5 =    kappa/(H*h1)*(n2 - n1) - uptake_m*m1*(n1/(n1+gamma_m)) - uptake_d*d1*(n1/(n1+gamma_d))     # surface nutrients 
     
     return f1, f2, f3, f4, f5
 
