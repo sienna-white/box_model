@@ -74,23 +74,23 @@ uptake_m = 2.23e-12 * 16 # [µmol P / cell s] nutrient uptake rate for microcyst
 # end
 
 
-N = 8
+N = 9
 
 
 
 # p1 = 0.02 # mg P / L # (from data)
 
 # Diffusivity 
-Kappa = logrange(10^0, 10^-8, N)
+Kappa = logrange(10^-1, 10^-8, N)
 # Ratio between depths
-Depth_ratio = LinRange(0.1, 0.9, N) 
+Depth_ratio = logrange(0.1, 0.9, N) 
 # Depth of water column
-Total_depth = LinRange(2, 25, N) 
+Total_depth = logrange(5, 25, N) 
 # Initial population of cells
-Starting_population = LinRange(1, 15, N) # cells / L
+Starting_population = logrange(5, 15, N) # cells / L
 
 # Nutrient concentration in bottom layer 
-Available_nutrients = LinRange(1, 60, N) # µmol P / L
+Available_nutrients = logrange(1, 40, N) # µmol P / L
 
 
 function system!(du, u, p, t)
