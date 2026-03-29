@@ -51,41 +51,42 @@ parameters["gamma_m"] = gamma_m
 parameters["gamma_d"] = gamma_d
 parameters["uptake_m"] = uptake_m
 parameters["uptake_d"] = uptake_d
-parameters["gamma_nm"] = gamma_nm
-parameters["gamma_nd"] = gamma_nd
+# parameters["gamma_nm"] = gamma_nm
+# parameters["gamma_nd"] = gamma_nd
 
 
 
-def jacobian_2s(kappa, h1, h2, m1, m2, d1, d2, n1):
+def jacobian_2s(kappa, R, H, m1, m2, d1, d2, n1):
 
     monod_growth_d = beta  * n1 / (gamma_d + n1)
     monod_growth_m = alpha * n1 / (gamma_m + n1)
 
-    monod_uptake_m = uptake_m * n1 / (gamma_nm + n1)
+    h1 = R*H
+    h2 = H - h1
 
     # Row 1
-    df1_dm1 = (-kappa/h1 + monod_growth_m - Lm)
-    df1_dm2 = (kappa/h1 + wm/h1)
+    df1_dm1 = (-kappa/(h1*H) + monod_growth_m - Lm)
+    df1_dm2 = (kappa/(h1*H) + wm/h1)
     df1_dn1 = alpha*m1*gamma_m/(gamma_m + n1)**2
 
     # Row 2 
-    df2_dm1 = kappa/h2
+    df2_dm1 = kappa/(h2*H)
     df2_dm2 = (-wm/h2 - kappa/h2 - Lm)
 
     # Row 3
     df3_dd1 = -wd/h1  - kappa/h1 + monod_growth_d - Ld
-    df3_dd2 = kappa/h1 
+    df3_dd2 = kappa/(h1*H) 
     df3_dn1 = beta*d1*gamma_d/(gamma_d + n1)**2
 
     # Row 4 
-    df4_dd1 = wd/h2 + kappa/h2
-    df4_dd2 = -Ld -  kappa/h2
+    df4_dd1 = wd/h2 + kappa/(h2*H)
+    df4_dd2 = -Ld -  kappa/(h2*H)
 
     # Row 5 
     df5_dm1 = - uptake_m  * (n1 / (n1 + gamma_m))
     df5_dd1 = - uptake_d  * (n1 / (n1 + gamma_d))
     # df5_dn1 = -kappa/h1 - uptake_m*m1 * gamma_nm/(gamma_nm + n1)**2 - uptake_d * d1 * gamma_nd/(gamma_nd + n1)**2 
-    df5_dn1 = -kappa/h1  - uptake_m*m1 * gamma_m/(gamma_m + n1)**2 - uptake_d * d1 * gamma_d/(gamma_d + n1)**2 
+    df5_dn1 = -kappa/(h1*H)  - uptake_m*m1 * gamma_m/(gamma_m + n1)**2 - uptake_d * d1 * gamma_d/(gamma_d + n1)**2 
 
     # Jacobian matrix
     j = np.array([[df1_dm1,   df1_dm2,       0,          0,     df1_dn1 ],
@@ -104,18 +105,20 @@ def jacobian_2s(kappa, h1, h2, m1, m2, d1, d2, n1):
 
 
 
-def jacobian_1s(kappa, h1, h2, m1, m2, n1):
+def jacobian_1s(kappa, R, H, m1, m2, n1):
 
+    h1 = R*H
+    h2 = H - h1
     monod_growth_m = alpha * n1 / (gamma_m + n1)
     monod_uptake_m = uptake_m * n1 / (gamma_nm + n1)
 
     # Row 1
-    df1_dm1 = (-kappa/h1 + monod_growth_m - Lm)
-    df1_dm2 = (kappa/h1 + wm/h1)
+    df1_dm1 = (-kappa/(h1*H) + monod_growth_m - Lm)
+    df1_dm2 = (kappa/(h1*H) + wm/h1)
     df1_dn1 = alpha*m1*gamma_m/(gamma_m + n1)**2
 
     # Row 2 
-    df2_dm1 = kappa/h2
+    df2_dm1 = kappa/(h2*H)
     df2_dm2 = (-wm/h2 - kappa/h2 - Lm)
 
 
